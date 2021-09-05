@@ -1,10 +1,10 @@
-package pawelmadela.calendar.controller;
+package pawelmadela.calendar.controllers;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import pawelmadela.calendar.controller.Request.UserRequest;
+import pawelmadela.calendar.controllers.Request.UserRequest;
 import pawelmadela.calendar.enums.AccountStatus;
 import pawelmadela.calendar.enums.UserServiceResponseStatus;
 import pawelmadela.calendar.model.User;

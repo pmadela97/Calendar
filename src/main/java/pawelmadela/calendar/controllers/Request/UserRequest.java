@@ -1,6 +1,4 @@
-package pawelmadela.calendar.controller.Request;
-
-import pawelmadela.calendar.model.User;
+package pawelmadela.calendar.controllers.Request;
 
 import java.lang.reflect.Field;
 

@@ -1,78 +1,102 @@
+
 package pawelmadela.calendar.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import pawelmadela.calendar.enums.AccountStatus;
+import pawelmadela.calendar.enums.AccountType;
+import pawelmadela.calendar.enums.Authority;
 
 import javax.persistence.*;
 import java.util.Collection;
+import java.util.List;
 
-@Entity(name = "USER")
+import static pawelmadela.calendar.enums.AccountType.*;
+
+/**
+ * Class that contains all information about user in app.
+ */
+@Entity
+@Table(name = "USERS")
 public class User implements UserDetails {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    Long id;
+    @JsonIgnore
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    long userId;
     String username;
     String firstname;
     String lastname;
+    @JsonIgnore
     char[] password;
+    @JsonIgnore
     String emailAddress;
+    @Enumerated(EnumType.STRING)
     AccountStatus accountStatus;
+    @Enumerated(EnumType.STRING)
+    AccountType accountType;
 
+    public User() {}
 
-
-    public User() { };
-
-    public User(Long id, String username, String firstname, String lastname, char[] password, String emailAddress) {
-        this.id = id;
+    public User(String username, String firstname, String lastname, char[] password, String emailAddress, AccountStatus accountStatus, AccountType accountType) {
         this.username = username;
         this.firstname = firstname;
         this.lastname = lastname;
         this.password = password;
         this.emailAddress = emailAddress;
+        this.accountStatus = accountStatus;
+        this.accountType = accountType;
     }
 
-    public Long getId() {
-        return id;
+    public AccountType getAccountType() {
+        return accountType;
+    }
+
+    public Long getUserId() {
+        return userId;
     }
 
     public String getUsername() {
         return username;
     }
 
+    @JsonIgnore
     @Override
     public boolean isAccountNonExpired() {
-        if(accountStatus!=null && accountStatus == AccountStatus.EXPIERED){
-            return false;
-        }
-        return true;
+        if(accountStatus == null) return false;
+        return accountStatus != AccountStatus.EXPIRED;
     }
 
+    @JsonIgnore
     @Override
     public boolean isAccountNonLocked() {
-        if(accountStatus!=null && accountStatus == AccountStatus.BLOCKED){
-            return false;
-        }
-        return true;
+        if(accountStatus == null) return false;
+        return accountStatus != AccountStatus.BLOCKED;
     }
 
+    @JsonIgnore
     @Override
     public boolean isCredentialsNonExpired() {
         return true;
     }
 
+
+    @JsonIgnore
     @Override
     public boolean isEnabled() {
-        if(accountStatus!=null && accountStatus == AccountStatus.ACTIVE){
-            return true;
-        }
-        return false;
+        if(accountStatus == null) return false;
+        return accountStatus == AccountStatus.ACTIVE;
     }
 
+    @JsonIgnore
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return null;
+        if(accountType == null) return null;
+        if(accountType == USER){
+            return List.of(Authority.USER_WRITE,Authority.USER_READ,Authority.USER_DELETE);
+        }
+        return List.of(Authority.ADMIN_WRITE,Authority.ADMIN_READ,Authority.ADMIN_DELETE);
     }
     public String getFirstname() {
         return firstname;
@@ -82,7 +106,7 @@ public class User implements UserDetails {
         return lastname;
     }
 
-    public AccountStatus isAccountStatus() {
+    public AccountStatus getAccountStatus() {
         return accountStatus;
     }
 
@@ -90,20 +114,23 @@ public class User implements UserDetails {
         this.accountStatus = accountStatus;
     }
 
+    @JsonIgnore
     public char[] getPasswordAsChar() {
         return password;
     }
 
+
     public String getPassword() {
-        return password.toString();
+
+        return String.valueOf(password);
     }
 
     public String getEmailAddress() {
         return emailAddress;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setUserId(Long id) {
+        this.userId = id;
     }
 
     public void setUsername(String username) {

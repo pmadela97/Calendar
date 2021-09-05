@@ -4,7 +4,7 @@ package pawelmadela.calendar.enums;
 /**
  * Represents type which provides information about response from services and store message to controller
  */
-public enum UserResponseStatus {
+public enum UserServiceResponseStatus {
 
     USERNAME_EXISTS,
     EMAIL_EXISTS,
@@ -19,5 +19,7 @@ public enum UserResponseStatus {
     EMAIL_CHANGED_SUCESSFULL,
     PASSWORD_CHANGED_SUCESSFULL,
     RESULT_FOUND,
+    RESULT_NOT_FOUND,
+    SAME_PASSWORD,
     INVALID_ACCOUNT_TYPE;
 }

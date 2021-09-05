@@ -1,4 +1,4 @@
-package pawelmadela.calendar.controller;
+package pawelmadela.calendar.controllers;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7,13 +7,10 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import pawelmadela.calendar.auth.jwt.JwtRequest;
 import pawelmadela.calendar.auth.jwt.JwtResponse;
 import pawelmadela.calendar.auth.jwt.JwtTokenComponent;
-import pawelmadela.calendar.enums.AccountType;
 import pawelmadela.calendar.model.User;
 import pawelmadela.calendar.services.UserServiceImp;
 

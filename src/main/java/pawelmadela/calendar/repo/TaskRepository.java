@@ -1,2 +1,4 @@
-package pawelmadela.calendar.repo;public class TaskRepository {
+package pawelmadela.calendar.repo;
+
+public class TaskRepository {
 }
