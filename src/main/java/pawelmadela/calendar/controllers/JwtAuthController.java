@@ -31,9 +31,9 @@ public class JwtAuthController {
     @PostMapping("")
     public ResponseEntity<?> createAuthToken(@RequestBody JwtRequest authRequest) throws Exception{
         authenticate(authRequest.getUsername(), authRequest.getPassword());
-        final User user = (User) userServiceImp.showUserDataByUsername(authRequest.getUsername()).getResponseObject();
+        final User user = (User) userServiceImp.showUserByUsername(authRequest.getUsername()).getResponseObject();
         final String token = jwtTokenComponent.generateToken(user);
-        final JwtResponse response = new JwtResponse(token,user.getUsername(),jwtTokenComponent.getExpirationDateFromToken(token),user.getFirstname(),user.getLastname());
+        final JwtResponse response = new JwtResponse(token,user.getFirstname(),user.getLastname(),user.getAccountType().name());
         System.out.println("SEND AUTH TOKEN");
         System.err.println(response);
         return ResponseEntity.ok(response);
@@ -49,3 +49,4 @@ public class JwtAuthController {
         }
     }
 }
+

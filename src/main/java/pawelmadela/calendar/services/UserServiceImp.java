@@ -1,24 +1,29 @@
 package pawelmadela.calendar.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import pawelmadela.calendar.controllers.Request.UserRequest;
+import pawelmadela.calendar.enums.AccountStatus;
 import pawelmadela.calendar.enums.AccountType;
 import pawelmadela.calendar.enums.UserServiceResponseStatus;
 import pawelmadela.calendar.model.User;
 import pawelmadela.calendar.repo.UserRepository;
 
+import javax.transaction.Transactional;
 import java.util.List;
+import java.util.Optional;
 
 import static pawelmadela.calendar.enums.AccountStatus.*;
+import static pawelmadela.calendar.enums.UserServiceResponseStatus.*;
 
 
 /**
- * Service class that implements UserService interface to manage users informations
+ * Service class that implements UserService interface to manage users' data.
  */
 @Service
 public class UserServiceImp implements UserService, UserDetailsService {
@@ -31,103 +36,145 @@ public class UserServiceImp implements UserService, UserDetailsService {
         this.userRepository = userRepository;
     }
 
-    @Override
-    public ServiceResponse<UserServiceResponseStatus,User> showUserDataById(long userId){
-        User user = userRepository.getUserByUserId(userId);
-        if(user == null) return new ServiceResponse(UserServiceResponseStatus.USERID_NOT_FOUND,null);
-        return new ServiceResponse(UserServiceResponseStatus.RESULT_FOUND,null);
-    }
+    Optional<User> userOptional;
 
     @Override
-    public ServiceResponse<UserServiceResponseStatus,User> showUserDataByUsername(String username) {
-        User user = userRepository.getUserByUsername(username);
-        if(user == null) return new ServiceResponse(UserServiceResponseStatus.USERNAME_NOT_FOUND,null);
-        return new ServiceResponse(UserServiceResponseStatus.RESULT_FOUND,user);
-    }
-
-    @Override
-    public ServiceResponse<UserServiceResponseStatus,User> showUserDataByEmail(String email) {
-        User user = userRepository.getUserByEmailAddress(email);
-        if(user == null) return new ServiceResponse(UserServiceResponseStatus.EMAIL_NOT_FOUND,null);
-        return new ServiceResponse(UserServiceResponseStatus.RESULT_FOUND,user);
-    }
-
-    @Override
-    public ServiceResponse<UserServiceResponseStatus,User> editUserPassword(String username, String password) {
-        if(username == null || username.equals("") || password== null || password.equals(""))
-            return new ServiceResponse<>(UserServiceResponseStatus.UNEXPECTED_ERROR,null);
-        User user = userRepository.getUserByUsername(username);
-        if(user==null)
-            return new ServiceResponse<>(UserServiceResponseStatus.USERNAME_NOT_FOUND,null);
-        char[] passwordEncrypted = password.toCharArray();
-        if(passwordEncrypted.equals(userRepository.getUserByUsername(username).getPassword()))
-            return new ServiceResponse<>(UserServiceResponseStatus.SAME_PASSWORD,null);
-        //password validaion skiped
-        user.setPassword(passwordEncrypted);
+    public ServiceResponse<UserServiceResponseStatus,User> showUserByUsername(String username) {
         try {
-            userRepository.save(user);
-        }catch (Exception e){
-            return new ServiceResponse(UserServiceResponseStatus.UNEXPECTED_ERROR,null);
+            if (username == null || username.equals("")) return new ServiceResponse<>(NULL_CREDENTIALS, null);
+            userOptional = Optional.ofNullable(userRepository.getUserByUsername(username));
+            if (userOptional.isPresent()) return new ServiceResponse<>(USERNAME_FOUND, userOptional.get());
+            else return new ServiceResponse<>(USERNAME_NOT_FOUND, null);
+        }catch(DataAccessResourceFailureException e){
+            return new ServiceResponse<>(SERVER_CONNECTION_FAILURE,null);
         }
-        return new ServiceResponse(UserServiceResponseStatus.PASSWORD_CHANGED_SUCESSFULL,user.getUsername());
-
-    }
-
-
-    @Override
-    public ServiceResponse deleteUserDataById(long userId) {
-        return null;
-    }
-
-    @Override
-    public ServiceResponse deleteUserDataByUsername(String username) {
-        return null;
-    }
-
-    @Override
-    public ServiceResponse deleteUserDataByEmail(String email) {
-        return null;
     }
     @Override
-    public ServiceResponse<UserServiceResponseStatus,User> createUser(UserRequest userRequest) {
-        if (userRequest == null || userRequest.isNull())
-            return new ServiceResponse(UserServiceResponseStatus.UNEXPECTED_ERROR, null);
-        else if (userRepository.getUserByUsername(userRequest.getUsername()) != null)
-            return new ServiceResponse(UserServiceResponseStatus.USERNAME_EXISTS, null);
-        else if (userRepository.getUserByEmailAddress(userRequest.getEmailAddress()) != null)
-            return new ServiceResponse(UserServiceResponseStatus.EMAIL_EXISTS, null);
-        AccountType type = AccountType.valueOf(userRequest.getAccountType());
-        if(type == null){
-            return new ServiceResponse(UserServiceResponseStatus.INVALID_ACCOUNT_TYPE,null);
-        }
-
-        BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-        char[] encodedPassword = passwordEncoder.encode(userRequest.getPassword()).toCharArray();
-        User user = new User(   userRequest.getUsername(),
-                                userRequest.getFirstname(),
-                                userRequest.getLastname(),
-                                encodedPassword,
-                                userRequest.getEmailAddress(),
-                                ACTIVE,
-                                type
-        );
+    @Transactional
+    public UserServiceResponseStatus editUserPassword(String username, String password) {
         try {
-            userRepository.save(user);
-        }catch (Exception e){
-            return new ServiceResponse(UserServiceResponseStatus.UNEXPECTED_ERROR,null);
+            if(username == null || username.equals("") || password== null || password.equals(""))
+            return NULL_CREDENTIALS;
+        userOptional = Optional.ofNullable(userRepository.getUserByUsername(username));
+        if(userOptional.isPresent()){
+            BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+            String encodedPasword = passwordEncoder.encode(password);
+            if(encodedPasword.equals(userOptional.get().getPassword())) return SAME_PASSWORD;
+            userOptional.get().setPassword(encodedPasword.toCharArray());
+            userRepository.save(userOptional.get());
+            return PASSWORD_CHANGED_SUCESSFULL;
+        }else{
+        return USERNAME_NOT_FOUND;
         }
-        return new ServiceResponse(UserServiceResponseStatus.USER_CREATED,userRepository.getUserByUsername(user.getUsername()));
+        }catch(DataAccessResourceFailureException e){
+            return SERVER_CONNECTION_FAILURE;
+        }
+    }
+
+    @Override
+    public UserServiceResponseStatus editUserEmail(String username, String email) {
+        try {
+            if(username == null || username.equals("") || email== null || email.equals(""))
+                return NULL_CREDENTIALS;
+            userOptional = Optional.ofNullable(userRepository.getUserByUsername(username));
+            if(userOptional.isPresent()){
+
+                userOptional.get().setEmailAddress(email);
+                userRepository.save(userOptional.get());
+                return EMAIL_CHANGED_SUCCESSFULL;
+            }else{
+                return USERNAME_NOT_FOUND;
+            }
+        }catch(DataAccessResourceFailureException e){
+            return SERVER_CONNECTION_FAILURE;
+        }    }
+
+    @Override
+    @Transactional
+    public UserServiceResponseStatus deleteUserByUsername(String username) {
+        try {
+            if (username == null || username.equals("")) return NULL_CREDENTIALS;
+            userOptional = Optional.ofNullable(userRepository.getUserByUsername(username));
+            if (userOptional.isPresent()) {
+                userRepository.deleteUserByUsername(username);
+                return USER_DELETED;
+            } else {
+                return USERNAME_NOT_FOUND;
+            }
+        }catch (DataAccessResourceFailureException e){
+            return SERVER_CONNECTION_FAILURE;
+        }
+    }
+    @Transactional
+    @Override
+    public UserServiceResponseStatus createUser(UserRequest userRequest,String accountType,AccountStatus accountStatus) {
+        try {
+            if (userRequest == null || accountType == null ||  accountType.equals("") || userRequest.isNull()) return NULL_CREDENTIALS;
+            if(Optional.ofNullable(userRepository.getUserByUsername(userRequest.getUsername())).isPresent()) return USERNAME_EXISTS;
+            else if(Optional.ofNullable(userRepository.getUserByEmailAddress(userRequest.getEmailAddress())).isPresent()) return EMAIL_EXISTS;
+
+            AccountType type;
+                    switch (accountType){
+                        case "USER":
+                            type = AccountType.USER;
+                            break;
+                        case "ADMIN":
+                            type = AccountType.ADMIN;
+                            break;
+                        default:
+                            return INVALID_ACCOUNT_TYPE;
+                    }
+                    BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+                    char[] encodedPassword = passwordEncoder.encode(userRequest.getPassword()).toCharArray();
+                    User user = new User(userRequest.getUsername(),
+                            userRequest.getFirstname(),
+                            userRequest.getLastname(),
+                            encodedPassword,
+                            userRequest.getEmailAddress(),
+                            accountStatus,
+                            type
+                    );
+
+                    userRepository.save(user);
+                return USER_CREATED;
+        } catch (DataAccessResourceFailureException e) {
+            return SERVER_CONNECTION_FAILURE;
+        }
     }
 
     @Override
     public ServiceResponse<UserServiceResponseStatus, List<User>> showAllUsers() {
-        List<User> list = userRepository.getAll();
-        if(list== null) return new ServiceResponse(UserServiceResponseStatus.RESULT_NOT_FOUND,null);
-        else return new ServiceResponse(UserServiceResponseStatus.RESULT_FOUND,list);
+        try{
+        Optional<List<User>> listOptional = Optional.ofNullable(userRepository.getAll());
+        if(listOptional.isPresent()) return new ServiceResponse(RESULT_FOUND,listOptional.get());
+        else return new ServiceResponse(RESULT_NOT_FOUND,null);
+    }catch (DataAccessResourceFailureException e){
+            return new ServiceResponse<>(SERVER_CONNECTION_FAILURE,null);
+        }
     }
 
     @Override
     public UserDetails loadUserByUsername(String s) throws UsernameNotFoundException {
-        return (UserDetails) showUserDataByUsername(s).getResponseObject();
+        return (UserDetails) showUserByUsername(s).getResponseObject();
+    }
+
+    @Override
+    public UserServiceResponseStatus editUserStatus(String username, String status){
+        if(username == null || status == null || username.equals("") || status.equals(""))
+            return NULL_CREDENTIALS;
+        if((!status.equals(ACTIVE.name())) && (!status.equals(BLOCKED.name())) && (!status.equals(EXPIRED.name())))
+            return WRONG_ACCOUNT_STATUS;
+        try {
+            Optional<User> userOptional = Optional.ofNullable(userRepository.getUserByUsername(username));
+            if (userOptional.isPresent()) {
+                userOptional.get().setAccountStatus(AccountStatus.valueOf(status));
+                userRepository.save(userOptional.get());
+                return STATUS_CHANGED_SUCCESFULL;
+            }else{
+                return USERNAME_NOT_FOUND;
+            }
+        }catch (DataAccessResourceFailureException e){
+            return SERVER_CONNECTION_FAILURE;
+        }
     }
 }

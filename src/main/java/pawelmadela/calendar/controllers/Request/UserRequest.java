@@ -8,18 +8,16 @@ public class UserRequest {
     private String lastname;
     private String password;
     private String emailAddress;
-    private String accountType;
 
     public UserRequest() {
     }
 
-    public UserRequest(String username, String firstname, String lastname, String password, String emailAddress, String accountType) {
+    public UserRequest(String username, String firstname, String lastname, String password, String emailAddress) {
         this.username = username;
         this.firstname = firstname;
         this.lastname = lastname;
         this.password = password;
         this.emailAddress = emailAddress;
-        this.accountType = accountType;
     }
 
     public String getUsername() {
@@ -35,8 +33,6 @@ public class UserRequest {
     }
 
     public String getPassword() { return password; }
-
-    public String getAccountType() { return accountType; }
 
     public String getEmailAddress() {
         return emailAddress;
