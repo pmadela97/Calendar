@@ -8,10 +8,13 @@ import pawelmadela.calendar.controllers.Request.UserRequest;
 import pawelmadela.calendar.enums.AccountStatus;
 import pawelmadela.calendar.enums.UserServiceResponseStatus;
 import pawelmadela.calendar.model.User;
+import pawelmadela.calendar.model.dto.ObjcetMapper;
+import pawelmadela.calendar.model.dto.UserDto;
 import pawelmadela.calendar.services.ServiceResponse;
 import pawelmadela.calendar.services.UserServiceImp;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,13 +35,13 @@ public class AdminController {
     // Show User data
     @GetMapping("/users/{username}")
     public ResponseEntity<?> showUserDetails(@PathVariable String username) {
-        ServiceResponse<UserServiceResponseStatus, User> serviceResponse = userServiceImp.showUserByUsername(username);
+        ServiceResponse<UserServiceResponseStatus, UserDto> serviceResponse = userServiceImp.getUserDtoByUsername(username);
         UserServiceResponseStatus status = serviceResponse.getResponseStatus();
         if (status != null) {
             switch (serviceResponse.getResponseStatus()) {
                 case USERNAME_FOUND:
                     return ResponseEntity
-                            .ok(new ServiceResponse(serviceResponse.getResponseStatus(), serviceResponse.getResponseObject().getUsername()));
+                            .ok(new ServiceResponse(serviceResponse.getResponseStatus(), serviceResponse.getResponseObject()));
                 case USERNAME_NOT_FOUND:
                     return ResponseEntity
                             .internalServerError()
@@ -49,55 +52,68 @@ public class AdminController {
         } else return ResponseEntity.internalServerError().build();
     }
 
-    @GetMapping("/users/")
-    public ResponseEntity<?> showUsers(@RequestParam(required = false) boolean isActive, @RequestParam(required = false) boolean isBlocked, @RequestParam(required = false) boolean isExpired) {
-        ServiceResponse<UserServiceResponseStatus, List<User>> serviceResponse = userServiceImp.showAllUsers();
+    @GetMapping("/users")
+    public ResponseEntity<?> showUsers(@RequestParam(required = false) boolean isActive, @RequestParam(required = false) boolean isBlocked, @RequestParam(required = false) boolean isExpired,@RequestParam(required = false) boolean isUnconfirmed) {
+        ServiceResponse<UserServiceResponseStatus, List<User>> serviceResponse = userServiceImp.getAllUsers();
+        List<User> responseList = new ArrayList<>();
         if (serviceResponse.getResponseStatus() == RESULT_NOT_FOUND)
             return ResponseEntity.badRequest().body(serviceResponse);
         if (serviceResponse.getResponseStatus() == SERVER_CONNECTION_FAILURE)
             return ResponseEntity.internalServerError().body(serviceResponse.getResponseStatus());
         List<User> list = serviceResponse.getResponseObject();
         if (isActive) {
-            list = list
+            responseList.addAll(list
                     .stream()
                     .filter((User u) -> u.getAccountStatus().equals(AccountStatus.ACTIVE))
-                    .collect(Collectors.toList());
-        } else if (isBlocked) {
-            list = list
+                    .collect(Collectors.toList()));
+        }if (isBlocked) {
+            responseList.addAll(list
                     .stream()
                     .filter((User u) -> u.getAccountStatus() == AccountStatus.BLOCKED)
-                    .collect(Collectors.toList());
-        } else if (isExpired) {
-            list = list
+                    .collect(Collectors.toList()));
+        }if (isUnconfirmed) {
+            responseList.addAll(list
+                    .stream()
+                    .filter((User u) -> u.getAccountStatus() == AccountStatus.UNCONFIRMED)
+                    .collect(Collectors.toList()));
+        }if (isExpired) {
+            responseList.addAll(list
                     .stream()
                     .filter((User u) -> u.getAccountStatus() == AccountStatus.EXPIRED)
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toList()));
         }
-        return ResponseEntity.ok(new ServiceResponse(serviceResponse.getResponseStatus(), list));
+        return ResponseEntity.ok(new ServiceResponse(serviceResponse.getResponseStatus(), ObjcetMapper.map(responseList)));
     }
 
     //Add new user
     @PostMapping("/users/new")
     public ResponseEntity<?> createNewUser(@RequestBody UserRequest request) {
-        if (request.isNull()) return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-        UserServiceResponseStatus serviceResponse = userServiceImp.createUser(request,"USER",AccountStatus.ACTIVE);
-        if (serviceResponse == USER_CREATED)
-            return ResponseEntity.created(URI.create("/api/admin/users/" + request.getUsername())).build();
-        else {
-            if (serviceResponse == SERVER_CONNECTION_FAILURE) return ResponseEntity.internalServerError().build();
-            return ResponseEntity.internalServerError().body(serviceResponse);
+        if (request.isNull()) return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        UserServiceResponseStatus serviceResponseStatus = userServiceImp.createUser(request,"USER",AccountStatus.ACTIVE);
+        switch (serviceResponseStatus){
+            case USER_CREATED:
+                return ResponseEntity.ok().build();
+            case SERVER_CONNECTION_FAILURE:
+                return ResponseEntity.internalServerError().body(serviceResponseStatus);
+            default:
+                return  ResponseEntity.badRequest().body(serviceResponseStatus);
         }
     }
     @PostMapping("/users/newadmin")
     public ResponseEntity<?> createNewAdmin(@RequestBody UserRequest request) {
-        if (request.isNull()) return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-        UserServiceResponseStatus serviceResponse = userServiceImp.createUser(request,"ADMIN",AccountStatus.ACTIVE);
-        if (serviceResponse == USER_CREATED)
-            return ResponseEntity.created(URI.create("/api/admin/users/" + request.getUsername())).build();
-        else {
-            if (serviceResponse == SERVER_CONNECTION_FAILURE) return ResponseEntity.internalServerError().build();
-            return ResponseEntity.internalServerError().body(serviceResponse);
+        if (request.isNull()) return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        UserServiceResponseStatus serviceResponseStatus = userServiceImp.createUser(request,"ADMIN",AccountStatus.ACTIVE);
+        switch (serviceResponseStatus){
+            case USER_CREATED:
+                return ResponseEntity.ok().build();
+            case SERVER_CONNECTION_FAILURE:
+                return ResponseEntity.internalServerError().body(serviceResponseStatus);
+            default:
+                return  ResponseEntity.badRequest().body(serviceResponseStatus);
+
         }
+
+
     }
 
 
@@ -141,8 +157,25 @@ public class AdminController {
             default:
                 return ResponseEntity.badRequest().body(UNEXPECTED_ERROR);
         }
+    }
 
-
+    @PostMapping("/users/{username}/edit/status/{status}")
+    public ResponseEntity<?> editUserStatus(@PathVariable String username, @PathVariable String status) {
+        if (username == null || status == null || username.equals("") || status.equals(""))
+            return ResponseEntity.notFound().build();
+        UserServiceResponseStatus responseStatus = userServiceImp.editUserStatus(username, status);
+        switch (responseStatus) {
+            case NULL_CREDENTIALS:
+                return ResponseEntity.badRequest().build();
+            case USERNAME_NOT_FOUND:
+                return ResponseEntity.badRequest().body(responseStatus);
+            case SERVER_CONNECTION_FAILURE:
+                return ResponseEntity.internalServerError().body(responseStatus);
+            case STATUS_CHANGED_SUCCESFULL:
+                return ResponseEntity.ok(responseStatus);
+            default:
+                return ResponseEntity.badRequest().body(UNEXPECTED_ERROR);
+        }
     }
 
     @PostMapping("/users/{username}/delete")

@@ -24,7 +24,7 @@ public interface UserRepository extends CrudRepository<User,Long> {
     public User getUserByUserId(long userId);
 
     @Query(
-            value = "SELECT * FROM CALENDAR.users",
+            value = "SELECT * FROM calendar.users",
             nativeQuery = true)
     public List<User> getAll();
 

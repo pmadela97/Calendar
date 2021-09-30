@@ -15,7 +15,8 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
         if(authException.getCause() == null){
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Wrong credentails");
+            System.out.println();
+            response.sendError(HttpServletResponse.SC_FOUND, "Wrong credentails");
         }else
         response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
     }

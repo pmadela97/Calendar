@@ -4,7 +4,7 @@ public enum AccountStatus {
     BLOCKED("BLOCKED"),
     EXPIRED("EXPIRED"),
     ACTIVE("ACTIVE"),
-    NOT_CONFIRMED("NOT_CONFIRMED");
+    UNCONFIRMED("NOT_CONFIRMED");
 
 
     public String name;

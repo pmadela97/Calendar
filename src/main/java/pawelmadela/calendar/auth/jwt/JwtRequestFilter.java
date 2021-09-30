@@ -3,6 +3,7 @@ package pawelmadela.calendar.auth.jwt;
 
 
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.MalformedJwtException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -43,8 +44,14 @@ JwtRequestFilter(UserServiceImp userServiceImp, JwtTokenComponent jwtTokenCompon
                 username = jwtTokenComponent.getUsernameFromToken(jwtToken);
             } catch (IllegalArgumentException e) {
                 System.out.println("Unable to get JWT Token");
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             } catch (ExpiredJwtException e) {
                 System.out.println("JWT Token has expired");
+                System.out.println(jwtTokenComponent.getExpirationDateFromToken(jwtToken));
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            }
+            catch (MalformedJwtException e) {
+                System.out.println("JWT Token is invalid");
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             }
         } else {
@@ -68,7 +75,7 @@ JwtRequestFilter(UserServiceImp userServiceImp, JwtTokenComponent jwtTokenCompon
             // if token is valid configure Spring Security to manually set
             // authentication
             if (jwtTokenComponent.validateToken(jwtToken, userDetails)) {
-
+                System.out.println(jwtTokenComponent.getExpirationDateFromToken(jwtToken));
                 UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());
                 usernamePasswordAuthenticationToken

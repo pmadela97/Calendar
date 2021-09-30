@@ -42,7 +42,7 @@ public class UserRequest {
         Field[] fields  = this.getClass().getDeclaredFields();
         for (Field f: fields) {
             try {
-                if(f.get(this) == null){ return true;}
+                if(f.get(this) == null || f.get(this).equals("")){ return true;}
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             }

@@ -149,11 +149,14 @@ public class User implements UserDetails {
     @JsonIgnore
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        if(accountType == null) return null;
-        if(accountType == USER){
-            return List.of(Authority.USER_WRITE,Authority.USER_READ,Authority.USER_DELETE);
+        switch (accountType) {
+            case USER:
+                return List.of(Authority.USER_WRITE, Authority.USER_READ, Authority.USER_DELETE);
+            case ADMIN:
+                return List.of(Authority.ADMIN_WRITE, Authority.ADMIN_READ, Authority.ADMIN_DELETE);
+            default:
+                return null;
         }
-        return List.of(Authority.ADMIN_WRITE,Authority.ADMIN_READ,Authority.ADMIN_DELETE);
     }
     /**
      *Gets firstname;
